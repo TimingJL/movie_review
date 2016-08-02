@@ -361,4 +361,210 @@ Go to `app/views/movies/index.html.erb`. For each movie, let's just add `image_t
 ```
 
 
+
+# Styling and Structure
+Let's take care of some styling and structure. So let's add the bootstrap gem.      
+https://github.com/twbs/bootstrap-sass         
+
+### Import Bootstrap
+Open up our `Gemfile`
+```
+gem 'bootstrap-sass', '~> 3.2.0.2'
+```
+Then we'll run bundle install and restart the server.      
+
+We need to rename the `application.css` to `application.css.scss`, and import bootstrap styles in `app/assets/stylesheets/application.css.scss`
+```scss
+@import "bootstrap-sprockets";
+@import "bootstrap";
+```
+
+And we need to require bootstrap-sprockets within the `app/assets/javascripts/application.js`
+```js
+//= require jquery
+//= require bootstrap-sprockets
+```
+
+### Add Header Navbar
+First thing I want to do is add a header navbar. So we're going to add a partial. Let's add a new file in `app/views/layouts` and save that as `_header.html.erb`.              
+And In `app/views/layouts/application.html.erb`, wr're going to add `<%= render 'layouts/header' %>`
+```html
+
+	<!DOCTYPE html>
+	<html>
+	  <head>
+	    <title>MovieReview</title>
+	    <%= csrf_meta_tags %>
+
+	    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+	    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+	  </head>
+
+	  <body>
+	    <%= render 'layouts/header' %>
+		<% flash.each do |name, msg| %>
+		  		<%= content_tag(:div, msg, class: "alert alert-info") %>
+		<% end %>
+	    <%= yield %>
+	  </body>
+	</html>
+```
+
+Then I'm going to paste this in `app/views/layouts/_header.html.erb`
+```html
+
+	<nav class="navbar navbar-default" role="navigation">
+	  <div class="container">
+	    <div class="navbar-header">
+	      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+	        <span class="sr-only">Toggle navigation</span>
+	        <span class="icon-bar"></span>
+	        <span class="icon-bar"></span>
+	        <span class="icon-bar"></span>
+	      </button>
+	      <%= link_to "Movie Reviews", root_path, class: "navbar-brand" %>
+	    </div>
+
+	    <!-- Collect the nav links, forms, and other content for toggling -->
+	    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+	      <ul class="nav navbar-nav">
+	        <% if user_signed_in? %>
+	          <li><%= link_to "New Movie", new_movie_path, class: "active" %></li>
+	          <li><%= link_to "Account", edit_user_registration_path %></li>
+	        <% else %>
+	          <li><%= link_to "Sign Up", new_user_registration_path, class: "active" %></li>
+	          <li><%= link_to "Sign In", new_user_session_path, class: "active" %></li>
+	        <% end %>
+	      </ul>
+	      <form class="navbar-form navbar-right" role="search">
+	        <div class="form-group">
+	          <input type="text" class="form-control" placeholder="Search">
+	        </div>
+	        <button type="submit" class="btn btn-default">Submit</button>
+	      </form>
+	    </div><!-- /.navbar-collapse -->
+	  </div><!-- /.container-fluid -->
+	</nav>
+```
+![image](https://github.com/TimingJL/movie_review/blob/master/pic/navbar.jpeg)
+
+
+Under `app/views/movies/index.html.erb`, we replace previous code to these:
+```html
+
+	<% if !user_signed_in? %>
+	  <div class="jumbotron">
+	    <h1>Your Favorite Movies Reviewed</h1>
+	    <p>Hashtag hoodie mumblecore selfies. Authentic keffiyeh leggings Kickstarter, narwhal jean shorts XOXO Vice Austin cardigan. Organic drinking vinegar freegan pickled.</p>
+	    <p><%= link_to "Sign Up To Write A Review", new_user_registration_path, class: "btn btn-primary btn-lg" %></p>
+	  </div>
+	<% end %>
+
+	<div class="row">
+	  <% @movies.each do |movie| %>
+	    <div class="col-sm-6 col-md-3">
+	      <div class="thumbnail">
+	        <%= link_to (image_tag movie.image.url(:medium), class: 'image'), movie %>
+	      </div>
+	    </div>
+	  <% end %>
+	</div>
+```
+
+And add a container `<div class="container">......</div>` in `app/views/layouts/application.html.erb`
+```html
+
+	<!DOCTYPE html>
+	<html>
+	  <head>
+	    <title>MovieReview</title>
+	    <%= csrf_meta_tags %>
+
+	    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+	    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+	  </head>
+
+	  <body>
+	    <%= render 'layouts/header' %>
+	    <div class="container">
+	      	<% flash.each do |name, msg| %>
+	      	  		<%= content_tag(:div, msg, class: "alert alert-info") %>
+	      	<% end %>
+	        <%= yield %>
+	    </div>
+	  </body>
+	</html>
+```
+![image](https://github.com/TimingJL/movie_review/blob/master/pic/index_bootstrap.jpeg)
+
+
+One thing I do notice is the font looks a little funky and that is bacause scaffold generate some styles for us.      
+So we have to go to `app/assets/stylesheets` to remove the file `scaffolds.scss`
+
+
+### Add Some Structure To Show Page
+So let's quickly add some structure to the show page.       
+In `app/views/movies/show.html.erb`
+```html
+
+	<div class="panel panel-default">
+	  <div class="panel-body">
+	    <div class="row">
+	      <div class="col-md-4">
+	        <%= image_tag @movie.image.url(:medium) %>
+	        <div class="table-responsive">
+	          <table class="table">
+	            <tbody>
+	              <tr>
+	                <td><strong>Title:</strong></td>
+	                <td><%= @movie.title %></td>
+	              </tr>
+	              <tr>
+	                <td><strong>Description:</strong></td>
+	                <td><%= @movie.description %></td>
+	              </tr>
+	              <tr>
+	                <td><strong>Movie length:</strong></td>
+	                <td><%= @movie.movie_length %></td>
+	              </tr>
+	              <tr>
+	                <td><strong>Director:</strong></td>
+	                <td><%= @movie.director %></td>
+	              </tr>
+	              <tr>
+	                <td><strong>Rating:</strong></td>
+	                <td><%= @movie.rating %></td>
+	              </tr>
+	            </tbody>
+	          </table>
+	        </div>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+
+	<%= link_to 'Edit', edit_movie_path(@movie) %> |
+	<%= link_to 'Back', movies_path %>
+```
+
+And in `app/assets/stylesheets/application.css.scss`, we paste in some quick styling.
+```scss
+body {
+	background: #AA4847;
+}
+
+.review_title {
+	margin: 0 0 20px 0;
+}
+.reviews {
+	padding: 15px 0;
+	border-bottom: 1px solid #EAEAEA;
+	.star-rating {
+		padding-bottom: 8px;
+	}
+}
+```
+![image](https://github.com/TimingJL/movie_review/blob/master/pic/basic_styling.jpeg)
+
+
 To be continued...
