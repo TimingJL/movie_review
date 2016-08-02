@@ -566,5 +566,106 @@ body {
 ```
 ![image](https://github.com/TimingJL/movie_review/blob/master/pic/basic_styling.jpeg)
 
+# Add Review
+Next thing we want to do is add reviews for each movie. To do that, I'm going to generate another scaffold.
+```console
+$ rails g scaffold Review rating:integer comment:text
+$ rake db:migrate
+```
+
+Next, we want to make sure that a review belongs to a user.     
+```console
+$ rails g migration add_user_id_to_reviews user_id:integer
+$ rake db:migrate
+```
+
+So let's pop into our console `rails c` to confirm that worked.
+```console
+$ rails c
+
+> @review = Review.first
+```
+
+```
+  Review Load (0.5ms)  SELECT  "reviews".* FROM "reviews" ORDER BY "reviews"."id" ASC LIMIT ?  [["LIMIT", 1]]        
+=> #<Review id: 1, rating: 5, comment: "This movie was freaking awesome!", created_at: "2016-08-02 08:04:09",        
+updated_at: "2016-08-02 08:04:09", user_id: nil>
+```
+So you can see the very end, the `user_id` is `nil` now.       
+Next, we need to add association between the review and the user model.     
+So let's open up our models.      
+In `app/models/review.rb` 
+```ruby
+class Review < ApplicationRecord
+	belongs_to :user
+end
+```
+
+In `app/models/user.rb`        
+One note on this is we want to add a line that says `dependent: :destroy`. Because if someone deltes their account, if a user gets deleted, we also want all the reviews associated with that user to be deleted as well. Or else, you could run into errors because you may find that no user is associated with certain review. Adding `dependent: :destroy` will  destroy any reviews that is associated with that user in case that user gets destroyed.
+```ruby
+class User < ApplicationRecord
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :trackable, :validatable
+  has_many :movies
+  has_many :reviews, dependent: :destroy
+end
+```
+
+In `app/controllers/reviews_controller.rb`, when a user writes a new review, the user_id will get assigned to them.
+```ruby
+  def create
+    @review = Review.new(review_params)
+    @review.user_id = current_user.id
+
+    respond_to do |format|
+      if @review.save
+        format.html { redirect_to @review, notice: 'Review was successfully created.' }
+        format.json { render :show, status: :created, location: @review }
+      else
+        format.html { render :new }
+        format.json { render json: @review.errors, status: :unprocessable_entity }
+      end
+    end
+  end
+```
+
+
+And we want to add `before_action`.          
+In `app/controllers/reviews_controller.rb`
+```ruby
+class ReviewsController < ApplicationController
+  before_action :set_review, only: [:show, :edit, :update, :destroy]
+  before_action :authenticate_user!
+  ...
+  ...
+
+ end
+```
+
+In `app/views/reviews/show.html.erb`, we add to test the association setup between the review and the user.
+```
+
+	<p>
+	  <strong>User:</strong>
+	  <%= @review.user.email %>
+	</p>
+```
+
+
+This is working, but we don't want to have a separate page for the reviews. We don't want to have the slash `/reviews` to list all the reviews.      
+We only want to show the reviews on the movie page.     
+To do that, we need to link the reviews to the movies and had an association between them.     
+And then, we'll also go through and remove the routes and controller actions for the index and the show. Because we only want to have the ability to create, edit and destroy a review on it.         
+
+
+Let's get started by delete:
+1. `app/reviews/index.html.erb`
+2. `app/reviews/index.json.jbuilder`
+3. `app/reviews/show.html.erb`
+4. `app/reviews/show.json.jbuilder`
+
+
+
 
 To be continued...
