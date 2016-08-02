@@ -56,7 +56,7 @@ $ rake db:migrate
 
 
 # Add Users
-We're going to use the `devise` gem for our users. 
+We're going to use the `devise` gem for our users.       
 https://github.com/plataformatec/devise      
 
 In `Gemfile`:
@@ -149,7 +149,7 @@ You can see that worked by going to `http://localhost:3000/users/sign_up`
 ![image](https://github.com/TimingJL/movie_review/blob/master/pic/basic_signup.jpeg)
 
 
-Our users are now all setup, bu when we create a new movie, it's not assigned to a user.       
+Our users are now all setup, but when we create a new movie, it's not assigned to a user.       
 To do that, we need to add a migration.       
 ```console
 $ rails g migraiton add_user_id_to_movies user_id:integer
@@ -172,7 +172,7 @@ updated_at: "2016-08-01 12:28:38", user_id: nil>
 
 So we need to make sure when we create a new movie, it's assigned to the current user.     
 Open up our `app/controllers/movies_controller.rb`      
-We need to change the `Movie.new` ot `current_user.movies.build`     
+We need to change the `Movie.new` to `current_user.movies.build`     
 ```ruby
   def new
     @movie = current_user.movies.build
@@ -207,7 +207,7 @@ class MoviesController < ApplicationController
   ...
 ```
 
-This will make sure that if a user who is not signed in tries to click link and add a new movie, they are routed to the sign-up page.
+This will make sure that if a user who is not sign-in tries to click link and add a new movie, they are routed to the sign-up page.
 
 Then, let's go into our models and add association between movie a user.      
 In `app/models/movie.rb`
@@ -229,7 +229,136 @@ end
 ```
 
 # Image Uploading
-Let's next add the ability to upload an image for each movie.
+Let's next add the ability to upload an image for each movie.      
+So what we want to do is add `paperclip` gem to our `Gemfile`
+```
+gem 'paperclip', '~> 4.2.0'
+```
+https://github.com/thoughtbot/paperclip          
+
+We need to add `has_attached_file` and `validates_attachment_content` to our movie model.         
+In `app/models/movie.rb`
+```ruby
+class Movie < ApplicationRecord
+	belongs_to :user
+
+	has_attached_file :image, styles: { medium: "400x600#" }, default_url: "/images/:style/missing.png"
+  	validates_attachment_content_type :image, content_type: /\Aimage\/.*\Z/
+end
+```
+
+Next, we need to add migration.
+```console
+$ rails g paperclip movie image
+$ rake db:migrate
+```
+
+Then we need to edit our forms and display inside of our view.      
+In `app/views/movies/_form.html.erb`, change 
+```html
+<%= form_for(movie) do |f| %>
+``` 
+to 
+```html
+<%= form_for @movie, html: { multipart: true } do |f| %>
+```
+
+Next, we need to add a file field for our upload. So I'm just going to add that under rating.
+```html
+
+  <div class="field">
+    <%= f.label :image %>
+    <%= f.file_field :image %>
+  </div>
+```
+
+So let's go back to our form `New Movie`, you can see we have the ability to choose an image now.
+![image](https://github.com/TimingJL/movie_review/blob/master/pic/image_browse.jpeg)
+
+In `app/views/movies/show.html.erb`, we're going to remove the notice.
+We're going to add a image tag.
+```html
+
+	<%= image_tag @movie.image.url(:medium) %>
+	<p>
+	  <strong>Title:</strong>
+	  <%= @movie.title %>
+	</p>
+
+	<p>
+	  <strong>Description:</strong>
+	  <%= @movie.description %>
+	</p>
+
+	<p>
+	  <strong>Movie length:</strong>
+	  <%= @movie.movie_length %>
+	</p>
+
+	<p>
+	  <strong>Director:</strong>
+	  <%= @movie.director %>
+	</p>
+
+	<p>
+	  <strong>Rating:</strong>
+	  <%= @movie.rating %>
+	</p>
+
+	<%= link_to 'Edit', edit_movie_path(@movie) %> |
+	<%= link_to 'Back', movies_path %>
+```
+
+The image did not save to our database, yet. That is because if we go back to our `app/controllers/movies_controller.rb`, we did not add it to the permitted attributes in the movie params. So what we need to do is add `:image`.         
+In `app/controllers/movies_controller.rb`
+```
+def movie_params
+  params.require(:movie).permit(:title, :description, :movie_length, :director, :rating, :image)
+end
+```
+![image](https://github.com/TimingJL/movie_review/blob/master/pic/show_image.jpeg)
+
+Let's try and display the movie posters(image) on the index.      
+Go to `app/views/movies/index.html.erb`. For each movie, let's just add `image_tag`:
+```html
+
+	<p id="notice"><%= notice %></p>
+
+	<h1>Movies</h1>
+
+	<table>
+	  <thead>
+	    <tr>
+	      <th>Title</th>
+	      <th>Description</th>
+	      <th>Movie length</th>
+	      <th>Director</th>
+	      <th>Rating</th>
+	      <th colspan="3"></th>
+	    </tr>
+	  </thead>
+
+	  <tbody>
+	    <% @movies.each do |movie| %>
+	      <tr>
+	        <td><%= image_tag movie.image.url(:medium) %></td>
+	        <td><%= movie.title %></td>
+	        <td><%= movie.description %></td>
+	        <td><%= movie.movie_length %></td>
+	        <td><%= movie.director %></td>
+	        <td><%= movie.rating %></td>
+	        <td><%= link_to 'Show', movie %></td>
+	        <td><%= link_to 'Edit', edit_movie_path(movie) %></td>
+	        <td><%= link_to 'Destroy', movie, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+	      </tr>
+	    <% end %>
+	  </tbody>
+	</table>
+
+	<br>
+
+	<%= link_to 'New Movie', new_movie_path %>
+```
 
 
 To be continued...
