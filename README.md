@@ -13,15 +13,14 @@ This time I built a movie rating and review application. We have a bunch of diff
 
 https://mackenziechild.me/12-in-12/5/  
 
-
+![image](https://github.com/TimingJL/movie_review/blob/master/pic/index_demo.jpeg)
 
 ### Highlights of this course
 1. Users
 2. Reviews
 3. Ratings
 4. Search
-5. HAML
-6. Bootstrap
+5. Bootstrap
 
 
 # Create A Movie Review App
@@ -1900,6 +1899,138 @@ In `app/views/movies/show.html.erb`
 	</script>
 ```
 ![image](https://github.com/TimingJL/movie_review/blob/master/pic/avg_review.jpeg)
+
+
+
+
+So the last and final thing we want to do for this application is add the ability to search.     
+We're going to use a gem called `searchkick`. You'll see intelligent search make easy.      
+https://github.com/ankane/searchkick      
+
+### How To Install and Configure Elasticsearch on Ubuntu 16.04
+https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-elasticsearch-on-ubuntu-16-04       
+
+After installing and loading Elasticsearch, You go to `http://localhost:9200/`, it should print out:
+![image](https://github.com/TimingJL/movie_review/blob/master/pic/load_elasticsearch.jpeg)
+That will confirm that is installed correctly.
+
+
+Then we need to add the line `searchkick` to our movie's model.       
+In `app/models/movie.rb`
+```ruby
+class Movie < ApplicationRecord
+	searchkick
+	belongs_to :user
+	has_many :reviews
+
+	has_attached_file :image, styles: { medium: "400x600#" }, default_url: "/images/:style/missing.png"
+  	validates_attachment_content_type :image, content_type: /\Aimage\/.*\Z/
+end
+```
+
+Next, we need to load `reindex` all of the movies from our database.
+```console
+$ rake searchkick:reindex CLASS=Movie
+```
+
+Next, we need to add a route for our search.          
+In `config/routes.rb`
+```ruby
+Rails.application.routes.draw do  
+  devise_for :users
+
+  resources :movies do
+  	collection do
+  		get 'search'
+  	end
+  	resources :reviews, except: [:show, :index]
+  end
+
+  root 'movies#index'
+end
+```
+
+The next thing we need to do is convert our static search form to embedded Ruby.
+In `app/views/layouts/_header.html.erb`
+```html
+
+	<nav class="navbar navbar-default" role="navigation">
+	  <div class="container">
+	    <div class="navbar-header">
+	      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+	        <span class="sr-only">Toggle navigation</span>
+	        <span class="icon-bar"></span>
+	        <span class="icon-bar"></span>
+	        <span class="icon-bar"></span>
+	      </button>
+	      <%= link_to "Movie Reviews", root_path, class: "navbar-brand" %>
+	    </div>
+
+	    <!-- Collect the nav links, forms, and other content for toggling -->
+	    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+	      <ul class="nav navbar-nav">
+	        <% if user_signed_in? %>
+	          <li><%= link_to "New Movie", new_movie_path, class: "active" %></li>
+	          <li><%= link_to "Account", edit_user_registration_path %></li>
+	        <% else %>
+	          <li><%= link_to "Sign Up", new_user_registration_path, class: "active" %></li>
+	          <li><%= link_to "Sign In", new_user_session_path, class: "active" %></li>
+	        <% end %>
+	      </ul>
+	      <%= form_tag search_movies_path, method: :get, class: "navbar-form navbar-right", role: "search" do %>
+	        <p>
+	          <%= text_field_tag :search, params[:search], class: "form-control" %>
+	          <%= submit_tag "Search", name: nil, class: "btn btn-default" %>
+	        </p>
+	      <% end %>
+	    </div><!-- /.navbar-collapse -->
+	  </div><!-- /.container-fluid -->
+	</nav>
+```
+
+Now, we need to add a search method within our controller.       
+In `app/controllers/movies_controller.rb`
+```ruby
+  def search
+    if params[:search].present?
+      @movies = Movie.search(params[:search])
+    else
+      @movies = Movie.all
+    end
+  end
+```
+So if the search form is legt blank, the application would just display all of the movies in our database.
+
+The final step is creating a view for our search form. So under `app/views/movies/`, let's create a new file named `search.html.erb`.          
+In `app/views/movies/search.html.erb`
+```html
+
+	<div class="row">
+	  <% @movies.each do |movie| %>
+	    <div class="col-sm-6 col-md-3">
+	      <div class="thumbnail">
+	        <%= link_to (image_tag movie.image.url(:medium), class: 'image'), movie %>
+	      </div>
+	    </div>
+	  <% end %>
+	</div>
+```
+
+Note: Isolation Problems(Result window is too large)
+```
+  Movie Search (49.2ms)  curl http://localhost:9200/movies_development/_search?pretty -d '{"query":{"dis_max":{"queries":[{"match":{"_all":{"query":"Hulk","operator":"and","boost":10,"analyzer":"searchkick_search"}}},{"match":{"_all":{"query":"Hulk","operator":"and","boost":10,"analyzer":"searchkick_search2"}}},{"match":{"_all":{"query":"Hulk","operator":"and","boost":1,"fuzziness":1,"max_expansions":3,"analyzer":"searchkick_search"}}},{"match":{"_all":{"query":"Hulk","operator":"and","boost":1,"fuzziness":1,"max_expansions":3,"analyzer":"searchkick_search2"}}}]}},"size":100000,"from":0,"fields":[]}'
+Elasticsearch::Transport::Transport::Errors::InternalServerError: [500] {"error":{"root_cause":[{"type":"query_phase_execution_exception","reason":"Result window is too large, from + size must be less than or equal to: [10000] but was [100000]. See the scroll api for a more efficient way to request large data sets. This limit can be set by changing the [index.max_result_window] index level parameter."}],"type":"search_phase_execution_exception","reason":"all shards failed","phase":"query","grouped":true,"failed_shards":[{"shard":0,"index":"movies_development_20160803223651347","node":"45PhBgMFQfW1xhnMcSQ7xw","reason":{"type":"query_phase_execution_exception","reason":"Result window is too large, from + size must be less than or equal to: [10000] but was [100000]. See the scroll api for a more efficient way to request large data sets. This limit can be set by changing the [index.max_result_window] index level parameter."}}]},"status":500}
+```
+
+Solution:         
+```console
+$ sudo vim /etc/elasticsearch/elasticsearch.yml
+```
+And add `index.max_result_window: 500000` at the bottom.     
+Then restart the elasticsearch service.
+```console
+$ sudo systemctl restart elasticsearch
+```
 
 
 To be continued...
