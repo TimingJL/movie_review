@@ -1908,8 +1908,56 @@ So the last and final thing we want to do for this application is add the abilit
 We're going to use a gem called `searchkick`. You'll see intelligent search make easy.      
 https://github.com/ankane/searchkick      
 
-### How To Install and Configure Elasticsearch on Ubuntu 16.04
-https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-elasticsearch-on-ubuntu-16-04       
+### How To Install and Configure Elasticsearch on Ubuntu 16.04    
+https://www.digitalocean.com/community/tutorials/how-to-install-elasticsearch-logstash-and-kibana-elk-stack-on-ubuntu-16-04
+https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-elasticsearch-on-ubuntu-16-04 
+
+
+
+To do so, we gonna need java.
+```console
+# Add the Oracle Java PPA to apt:
+$ sudo add-apt-repository -y ppa:webupd8team/java
+
+# Update your apt package database:
+$ sudo apt-get update
+
+# Install the latest stable version of Oracle Java 8 with this command (and accept the license agreement that pops up):
+$ sudo apt-get -y install oracle-java8-installer
+```
+
+Next thing we need to do is install elasticsearch.                  
+```console
+# Elasticsearch can be installed with a package manager by adding Elastic's package source list.
+# Run the following command to import the Elasticsearch public GPG key into apt:
+$ wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+
+# Create the Elasticsearch source list:
+$ echo "deb http://packages.elastic.co/elasticsearch/2.x/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
+
+# Update the apt package database again:
+$ sudo apt-get update
+
+# Install Elasticsearch with this command:
+$ sudo apt-get -y install elasticsearch
+
+# Elasticsearch is now installed. Let's edit the configuration:
+$ sudo vim /etc/elasticsearch/elasticsearch.yml
+
+# In /etc/elasticsearch/elasticsearch.yml excerpt (updated)
+$ network.host: localhost
+
+# Now, start Elasticsearch:
+$ sudo systemctl restart elasticsearch
+
+# Then, run the following command to start Elasticsearch on boot up:
+$ sudo systemctl daemon-reload
+$ sudo systemctl enable elasticsearch
+```
+
+
+
+       
 
 After installing and loading Elasticsearch, You go to `http://localhost:9200/`, it should print out:
 ![image](https://github.com/TimingJL/movie_review/blob/master/pic/load_elasticsearch.jpeg)
